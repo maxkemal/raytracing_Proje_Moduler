@@ -1,0 +1,195 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Kaynak Dosyalar">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Üst Bilgi Dosyaları">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Kaynak Dosyaları">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\header_file">
+      <UniqueIdentifier>{a178f398-6f42-4b10-b004-c04e1c92beb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Kaynak Dosyalar\Source_file">
+      <UniqueIdentifier>{5ad0c307-d2c4-46de-bc57-3bdaf9b7260a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Vec3.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Vec3SIMD.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Vec2.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="globals.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="AABB.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Box.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Sphere.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="BVHNode.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Matrix4x4.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Triangle.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Lambertian.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Volumetric.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Metal.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Light.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Dielectric.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="EmissiveMaterial.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="DiffuseLight.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="PointLight.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="DirectionalLight.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="AreaLight.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="HittableList.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadLocalRNG.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Vec3.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Vec3SIMD.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Vec2.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="globals.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Ray.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="AABB.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Hittable.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Box.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Sphere.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="BVHNode.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Matrix4x4.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Triangle.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Lambertian.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Volumetric.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Metal.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Light.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Dielectric.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="EmissiveMaterial.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="DiffuseLight.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="PointLight.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="DirectionalLight.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="AreaLight.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Plane.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="HittableList.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadLocalRNG.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,1369 @@
+#include <SDL.h>
+#include <SDL_main.h> 
+#include <iostream>
+#include <fstream>
+#include <random>
+#include <SDL_image.h>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <chrono>
+#include "ObjLoader.h"
+
+std::mutex mtx;
+std::atomic<int> completed_pixels(0);
+std::atomic<bool> rendering_complete(false);
+
+#define M_PI 3.14159265358979323846
+const double infinity = std::numeric_limits<double>::max();
+double random_double() {
+    static std::uniform_real_distribution<double> distribution(0.0, 1.0);
+    static std::mt19937 generator;
+    return distribution(generator);
+}
+
+template <typename T>
+T max(T a, T b) {
+    return (a > b) ? a : b;
+}
+
+
+
+double random_double(double min, double max) {
+    return min + (max - min) * random_double();
+}
+
+inline double clamp(double x, double min, double max) {
+    if (x < min) return min;
+    if (x > max) return max;
+    return x;
+}
+template<typename T>
+T clamp(const T& value, const T& min, const T& max) {
+    return std::max(min, std::min(max, value));
+}
+
+class Vec3 {
+public:
+    friend std::ostream& operator<<(std::ostream& os, const Vec3& v) {
+        os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
+        return os;
+    }
+
+    double x, y, z;
+
+    double length_squared() const {
+        return x * x + y * y + z * z;
+    }
+
+    double dot(const Vec3& other) const {
+        return x * other.x + y * other.y + z * other.z;
+    }
+
+    Vec3 cwiseProduct(const Vec3& v) const {
+        return Vec3(x * v.x, y * v.y, z * v.z);
+    }
+
+    Vec3 clamp(double min, double max) const {
+        return Vec3(::clamp(x, min, max),
+            ::clamp(y, min, max),
+            ::clamp(z, min, max));
+    }
+    Vec3& operator*=(const Vec3& v) {
+        x *= v.x;
+        y *= v.y;
+        z *= v.z;
+        return *this;
+    }
+
+    Vec3& operator*=(double t) {
+        x *= t;
+        y *= t;
+        z *= t;
+        return *this;
+    }
+    double length() const {
+        return sqrt(length_squared());
+    }
+
+    
+    static Vec3 random() {
+        return Vec3(random_double(), random_double(), random_double());
+    }
+    Vec3 random_in_unit_disk() {
+        while (true) {
+            Vec3 p = Vec3(random_double(-1, 1), random_double(-1, 1), 0);
+            if (p.length_squared() < 1) return p;
+        }
+    }
+
+    static Vec3 random(double min, double max) {
+        return Vec3(random_double(min, max), random_double(min, max), random_double(min, max));
+    }
+    // double x, y, z;
+    Vec3& operator+=(const Vec3& v) {
+        x += v.x;
+        y += v.y;
+        z += v.z;
+        return *this;
+    }
+    Vec3() : x(0), y(0), z(0) {}
+    Vec3(double x, double y, double z) : x(x), y(y), z(z) {}
+
+    Vec3 operator-() const { return Vec3(-x, -y, -z); }
+    //Vec3& operator+=(const Vec3& v) { x += v.x; y += v.y; z += v.z; return *this; }
+    //Vec3& operator*=(const double t) { x *= t; y *= t; z *= t; return *this; }
+    Vec3& operator/=(const double t) { return *this *= 1 / t; }
+
+    Vec3 operator+(const Vec3& v) const {
+        return Vec3(x + v.x, y + v.y, z + v.z);
+    }
+
+    Vec3 operator-(const Vec3& v) const {
+        return Vec3(x - v.x, y - v.y, z - v.z);
+    }
+
+    Vec3 operator*(const Vec3& v) const {
+        return Vec3(x * v.x, y * v.y, z * v.z);
+    }
+
+    Vec3 operator*(double t) const {
+        return Vec3(x * t, y * t, z * t);
+    }
+
+    Vec3 operator/(double t) const {
+        return Vec3(x / t, y / t, z / t);
+    }
+
+    double magnitude() const { return std::sqrt(x * x + y * y + z * z); }
+    Vec3 normalize() const { return *this / magnitude(); }
+
+    static double dot(const Vec3& v1, const Vec3& v2) {
+        return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    }
+
+    static Vec3 cross(const Vec3& v1, const Vec3& v2) {
+        return Vec3(v1.y * v2.z - v1.z * v2.y,
+            v1.z * v2.x - v1.x * v2.z,
+            v1.x * v2.y - v1.y * v2.x);
+    }
+
+
+
+    static Vec3 random_in_unit_sphere() {
+        while (true) {
+            auto p = Vec3::random(-1, 1);
+            if (p.magnitude() < 1) return p;
+        }
+    }
+
+    static Vec3 random_unit_vector() {
+        return random_in_unit_sphere().normalize();
+    }
+
+    static Vec3 reflect(const Vec3& v, const Vec3& n) {
+        return v - n * 2 * dot(v, n);
+    }
+
+    static Vec3 refract(const Vec3& uv, const Vec3& n, double etai_over_etat) {
+        auto cos_theta = std::min(dot(-uv, n), 1.0);
+        Vec3 r_out_perp = (uv + n * cos_theta) * etai_over_etat;
+        Vec3 r_out_parallel = n * -std::sqrt(std::abs(1.0 - r_out_perp.magnitude() * r_out_perp.magnitude()));
+        return r_out_perp + r_out_parallel;
+    }
+    inline Vec3 unit_vector(Vec3 v) {
+        return v / v.length();
+    }
+};
+
+
+
+Vec3 operator*(double t, const Vec3& v) {
+    return Vec3(v.x * t, v.y * t, v.z * t);
+}
+
+Vec3 random_in_unit_sphere() {
+    while (true) {
+        auto p = Vec3::random(-1, 1);
+        if (p.length_squared() >= 1) continue;
+        return p;
+    }
+}
+
+Vec3 random_unit_vector() {
+    return random_in_unit_sphere().normalize();
+}
+
+Vec3 reflect(const Vec3& v, const Vec3& n) {
+    return v - 2 * Vec3::dot(v, n) * n;
+}
+
+Vec3 refract(const Vec3& uv, const Vec3& n, double etai_over_etat) {
+    auto cos_theta = fmin(Vec3::dot(-uv, n), 1.0);
+    Vec3 r_out_perp = etai_over_etat * (uv + cos_theta * n);
+    Vec3 r_out_parallel = -sqrt(fabs(1.0 - r_out_perp.length_squared())) * n;
+    return r_out_perp + r_out_parallel;
+}
+
+class Ray {
+public:
+    Vec3 origin;
+    Vec3 direction;
+
+    Ray() {}
+    Ray(const Vec3& origin, const Vec3& direction) : origin(origin), direction(direction) {}
+
+    Vec3 at(double t) const { return origin + t * direction; }
+};
+
+class Material;
+
+struct HitRecord {
+    Vec3 point;
+    Vec3 normal;
+    std::shared_ptr<Material> material;
+    double t;
+    double u;
+    double v;
+    bool front_face;
+
+    inline void set_face_normal(const Ray& r, const Vec3& outward_normal) {
+        front_face = Vec3::dot(r.direction, outward_normal) < 0;
+        normal = front_face ? outward_normal : -outward_normal;
+    }
+};
+
+class Hittable {
+public:
+    virtual bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const = 0;
+    virtual ~Hittable() = default;
+};
+
+enum class MaterialType {
+    Lambertian,
+    Metal,
+    Dielectric,
+    Volumetric
+};
+
+class Material {
+public:
+    virtual MaterialType type() const = 0;
+    virtual Vec3 emitted(double u, double v, const Vec3& p) const {
+        return Vec3(0, 0, 0);
+    }
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered) const = 0;
+    virtual ~Material() = default;
+};
+
+class Lambertian : public Material {
+public:
+    MaterialType type() const override { return MaterialType::Lambertian; }
+    Lambertian(const Vec3& a) : albedo(a) {}
+    virtual Vec3 emitted(double u, double v, const Vec3& p) const override {
+        return Vec3(0, 0, 0);
+    }
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered) const override {
+        Vec3 scatter_direction = rec.normal + random_unit_vector();
+        scattered = Ray(rec.point, scatter_direction);
+        attenuation = albedo;
+        return true;
+    }
+
+    Vec3 albedo;
+};
+class Volumetric : public Material {
+public:
+    MaterialType type() const override { return MaterialType::Volumetric; }
+
+    Volumetric(const Vec3& a, double d, double fade_factor = 2.0)
+        : albedo(a), base_density(d), fade_factor(fade_factor) {}
+   
+
+    virtual Vec3 emitted(double u, double v, const Vec3& p) const override {
+        return Vec3(0, 0, 0);
+    }
+
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered) const override {
+        scattered = Ray(rec.point, random_in_unit_sphere());
+        attenuation = albedo;
+        return true;
+    }
+
+    bool isVolume(const Ray& r, const Vec3& p1, const Vec3& p2, double& t) const {
+        double distance_inside_boundary = (p2 - p1).length();
+        double hit_distance = -(1 / density) * std::log(random_double());
+
+        if (hit_distance < distance_inside_boundary) {
+            t = hit_distance;
+            return true;
+        }
+
+        return false;
+    }
+
+    double calculate_density(const Vec3& point, const HitRecord& rec) const {
+        // Yüzeye olan mesafeyi hesapla
+        double distance_to_surface = (point - rec.point).length();
+
+        // Yoğunluğu mesafeye göre ayarla
+        return base_density * (1.0 - std::exp(-fade_factor * distance_to_surface));
+    }
+
+    Vec3 calculate_attenuation(const Vec3& point, const HitRecord& rec, double distance) const {
+        double density = calculate_density(point, rec);
+        return albedo * std::exp(-density * distance);
+    }
+
+    double base_density;
+    double fade_factor;
+    Vec3 albedo;
+    double density;
+    double absorption_probability;
+};
+class Metal : public Material {
+public:
+    MaterialType type() const override { return MaterialType::Metal; }
+    Metal(const Vec3& a, double f) : albedo(a), fuzz(f < 1 ? f : 1) {}
+    virtual Vec3 emitted(double u, double v, const Vec3& p) const override {
+        return Vec3(0, 0, 0);
+    }
+    virtual bool scatter(
+        const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered
+    ) const override {
+        Vec3 reflected = reflect(r_in.direction.normalize(), rec.normal);
+        scattered = Ray(rec.point, reflected + fuzz * random_in_unit_sphere());
+        attenuation = albedo;
+        return (Vec3::dot(scattered.direction, rec.normal) > 0);
+    }
+
+    Vec3 albedo;
+    double fuzz;
+};
+
+class Dielectric : public Material {
+public:
+    MaterialType type() const override { return MaterialType::Dielectric; }
+    Dielectric(double index_of_refraction) : ir(index_of_refraction) {}
+    virtual Vec3 emitted(double u, double v, const Vec3& p) const override {
+        return Vec3(0, 0, 0);
+    }
+
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered) const override {
+        attenuation = Vec3(1.0, 1.0, 1.0);
+        double refraction_ratio = rec.front_face ? (1.0 / ir) : ir;
+
+        Vec3 unit_direction = r_in.direction.normalize();
+        double cos_theta = fmin(Vec3::dot(-unit_direction, rec.normal), 1.0);
+        double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+
+        bool cannot_refract = refraction_ratio * sin_theta > 1.0;
+        Vec3 direction;
+
+        if (cannot_refract || reflectance(cos_theta, refraction_ratio) > random_double())
+            direction = reflect(unit_direction, rec.normal);
+        else
+            direction = refract(unit_direction, rec.normal, refraction_ratio);
+
+        scattered = Ray(rec.point, direction);
+        return true;
+    }
+
+private:
+    double ir; // Index of Refraction
+
+    static double reflectance(double cosine, double ref_idx) {
+        // Schlick's approximation for reflectance
+        auto r0 = (1 - ref_idx) / (1 + ref_idx);
+        r0 = r0 * r0;
+        return r0 + (1 - r0) * pow((1 - cosine), 5);
+    }
+};
+class EmissiveMaterial : public Material {
+public:
+    EmissiveMaterial(const Vec3& emit) : emission(emit) {}
+
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered) const override {
+        return false; // Işık yayan materyal ışığı saçmaz, sadece yayar
+    }
+
+    virtual Vec3 emitted(double u, double v, const Vec3& p) const override {
+        return emission;
+    }
+
+private:
+    Vec3 emission;
+};
+
+class DiffuseLight : public Material {
+public:
+    DiffuseLight(Vec3 c) : emit(c) {}
+
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Vec3& attenuation, Ray& scattered) const override {
+        return false;
+    }
+
+    virtual Vec3 emitted(double u, double v, const Vec3& p) const override {
+        return emit;
+    }
+
+public:
+    Vec3 emit;
+};
+
+
+// LightType enum tanımı
+enum class LightType {
+    Point,
+    Directional,
+    Area
+};
+
+
+class Light {
+public:
+    Vec3 position;
+    Vec3 intensity;
+    Vec3 direction;  // Alan ışığı için yön
+    Vec3 u, v;       // Alan ışığı için düzlem vektörleri
+    double width, height;  // Alan ışığı için boyutlar
+
+    // Varsayılan constructor eklendi
+    Light() : position(0, 0, 0), intensity(1, 1, 1), direction(0, 1, 0), u(1, 0, 0), v(0, 0, 1), width(1), height(1) {}
+
+    // Sanal yıkıcı eklendi
+    virtual ~Light() = default;
+
+    virtual Vec3 random_point() const = 0;
+    virtual LightType type() const = 0;
+};
+
+class PointLight : public Light {
+public:
+    PointLight(const Vec3& pos, const Vec3& intens) {
+        position = pos;
+        intensity = intens;
+    }
+    Vec3 random_point() const override { return position; }
+    LightType type() const override { return LightType::Point; }
+};
+
+class DirectionalLight : public Light {
+public:
+    DirectionalLight(const Vec3& dir, const Vec3& intens) {
+        direction = dir.normalize();
+        intensity = intens;
+        position = Vec3(0, 0, 0);  // Arbitrary position, not used
+    }
+    Vec3 random_point() const override {
+        // Yönlü ışık için sonsuzda bir nokta
+        return position + direction * 1000000.0;
+    }
+    LightType type() const override { return LightType::Directional; }
+};
+
+class AreaLight : public Light {
+public:
+    AreaLight(const Vec3& pos, const Vec3& u_vec, const Vec3& v_vec, double w, double h, const Vec3& intens) {
+        position = pos;
+        u = u_vec.normalize();
+        v = v_vec.normalize();
+        width = w;
+        height = h;
+        intensity = intens;
+        direction = Vec3::cross(u, v).normalize();
+    }
+    Vec3 random_point() const override {
+        double random_u = random_double() - 0.5;
+        double random_v = random_double() - 0.5;
+        return position + u * random_u * width + v * random_v * height;
+    }
+    LightType type() const override { return LightType::Area; }
+};
+
+
+class Sphere : public Hittable {
+public:
+    Vec3 center;
+    double radius;
+    std::shared_ptr<Material> material;
+
+    Sphere() {}
+    Sphere(Vec3 cen, double r, std::shared_ptr<Material> m) : center(cen), radius(r), material(m) {}
+
+    virtual bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const override {
+        Vec3 oc = r.origin - center;
+        auto a = Vec3::dot(r.direction, r.direction);
+        auto b = Vec3::dot(oc, r.direction);
+        auto c = Vec3::dot(oc, oc) - radius * radius;
+        auto discriminant = b * b - a * c;
+
+        if (discriminant > 0) {
+            auto root = std::sqrt(discriminant);
+            auto temp = (-b - root) / a;
+            if (temp < t_max && temp > t_min) {
+                rec.t = temp;
+                rec.point = r.at(rec.t);
+                Vec3 outward_normal = (rec.point - center) / radius;
+                rec.set_face_normal(r, outward_normal);
+                rec.material = material;
+                return true;
+            }
+            temp = (-b + root) / a;
+            if (temp < t_max && temp > t_min) {
+                rec.t = temp;
+                rec.point = r.at(rec.t);
+                Vec3 outward_normal = (rec.point - center) / radius;
+                rec.set_face_normal(r, outward_normal);
+                rec.material = material;
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+
+
+class Box : public Hittable {
+public:
+    Vec3 center;
+    double size;
+    std::shared_ptr<Material> material;
+
+    Box() {}
+    Box(const Vec3& position, double size, std::shared_ptr<Material> mat)
+        : center(position), size(size), material(mat) {}
+
+    virtual bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const override {
+        Vec3 half_size(size / 2, size / 2, size / 2);
+        Vec3 min_point = center - half_size;
+        Vec3 max_point = center + half_size;
+
+        double tmin = (min_point.x - r.origin.x) / r.direction.x;
+        double tmax = (max_point.x - r.origin.x) / r.direction.x;
+
+        if (tmin > tmax) std::swap(tmin, tmax);
+
+        double tymin = (min_point.y - r.origin.y) / r.direction.y;
+        double tymax = (max_point.y - r.origin.y) / r.direction.y;
+
+        if (tymin > tymax) std::swap(tymin, tymax);
+
+        if ((tmin > tymax) || (tymin > tmax))
+            return false;
+
+        if (tymin > tmin)
+            tmin = tymin;
+
+        if (tymax < tmax)
+            tmax = tymax;
+
+        double tzmin = (min_point.z - r.origin.z) / r.direction.z;
+        double tzmax = (max_point.z - r.origin.z) / r.direction.z;
+
+        if (tzmin > tzmax) std::swap(tzmin, tzmax);
+
+        if ((tmin > tzmax) || (tzmin > tmax))
+            return false;
+
+        if (tzmin > tmin)
+            tmin = tzmin;
+
+        if (tzmax < tmax)
+            tmax = tzmax;
+
+        if (tmin < t_max && tmin > t_min) {
+            rec.t = tmin;
+            rec.point = r.at(rec.t);
+            Vec3 outward_normal = Vec3(0, 0, 0);
+            Vec3 relative_pos = rec.point - center;
+            double epsilon = 0.0001;
+
+            if (std::abs(relative_pos.x) > size / 2 - epsilon)
+                outward_normal.x = relative_pos.x > 0 ? 1 : -1;
+            else if (std::abs(relative_pos.y) > size / 2 - epsilon)
+                outward_normal.y = relative_pos.y > 0 ? 1 : -1;
+            else if (std::abs(relative_pos.z) > size / 2 - epsilon)
+                outward_normal.z = relative_pos.z > 0 ? 1 : -1;
+
+            rec.set_face_normal(r, outward_normal);
+            rec.material = material;
+            return true;
+        }
+
+        return false;
+    }
+};
+
+struct Plane {
+    Vec3 normal;
+    float distance;
+
+    Plane() : normal(Vec3()), distance(0) {}
+    Plane(const Vec3& n, float d) : normal(n), distance(d) {}
+
+    float distanceToPoint(const Vec3& point) const {
+        return normal.dot(point) + distance;
+    }
+};
+
+
+
+
+
+
+
+// AABB sınıfı için gerekli ekleme
+class AABB {
+public:
+    Vec3 min, max;
+
+    // ... Diğer AABB metodları ...
+
+    Vec3 getPositiveVertex(const Vec3& normal) const {
+        return Vec3(
+            normal.x >= 0 ? max.x : min.x,
+            normal.y >= 0 ? max.y : min.y,
+            normal.z >= 0 ? max.z : min.z
+        );
+    }
+};
+class Matrix4x4 {
+public:
+    float m[4][4];
+
+
+    // Varsayılan yapıcı
+    Matrix4x4() {
+        identity();
+    }
+
+    // Birim matris oluşturma
+    void identity() {
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                m[i][j] = (i == j) ? 1.0f : 0.0f;
+            }
+        }
+    }
+
+    // Matris çarpımı operatörü
+    Matrix4x4 operator*(const Matrix4x4& other) const {
+        Matrix4x4 result;
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                result.m[i][j] = 0;
+                for (int k = 0; k < 4; k++) {
+                    result.m[i][j] += m[i][k] * other.m[k][j];
+                }
+            }
+        }
+        return result;
+    }
+
+    Vec3 transform_point(const Vec3& p) const {
+        float x = m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3];
+        float y = m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3];
+        float z = m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3];
+        float w = m[3][0] * p.x + m[3][1] * p.y + m[3][2] * p.z + m[3][3];
+        return Vec3(x / w, y / w, z / w);
+    }
+
+    Vec3 transform_vector(const Vec3& v) const {
+        float x = m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z;
+        float y = m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z;
+        float z = m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z;
+        return Vec3(x, y, z);
+    }
+
+    static Matrix4x4 translation(const Vec3& t) {
+        Matrix4x4 mat;
+        mat.m[0][3] = t.x;
+        mat.m[1][3] = t.y;
+        mat.m[2][3] = t.z;
+        return mat;
+    }
+
+    static Matrix4x4 scaling(const Vec3& s) {
+        Matrix4x4 mat;
+        mat.m[0][0] = s.x;
+        mat.m[1][1] = s.y;
+        mat.m[2][2] = s.z;
+        return mat;
+    }
+
+    // Rotasyon matrisi oluşturma (örnek olarak X ekseni etrafında)
+    static Matrix4x4 rotation_x(float angle) {
+        Matrix4x4 mat;
+        float c = cos(angle);
+        float s = sin(angle);
+        mat.m[1][1] = c;
+        mat.m[1][2] = -s;
+        mat.m[2][1] = s;
+        mat.m[2][2] = c;
+        return mat;
+    }
+
+    // Y ve Z eksenleri için benzer rotasyon fonksiyonları eklenebilir
+};
+
+class Triangle : public Hittable {
+public:
+    Vec3 v0, v1, v2;
+    std::shared_ptr<Material> material;
+    Matrix4x4 transform;
+
+    Triangle(const Vec3& v0, const Vec3& v1, const Vec3& v2, std::shared_ptr<Material> material)
+        : v0(v0), v1(v1), v2(v2), material(material) {}
+
+    void set_transform(const Matrix4x4& t) {
+        transform = t;
+    }
+
+    virtual bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const override {
+        // Üçgenin köşe noktalarını dönüştür
+        Vec3 transformed_v0 = transform.transform_point(v0);
+        Vec3 transformed_v1 = transform.transform_point(v1);
+        Vec3 transformed_v2 = transform.transform_point(v2);
+
+        // Möller–Trumbore algoritması
+        Vec3 edge1 = transformed_v1 - transformed_v0;
+        Vec3 edge2 = transformed_v2 - transformed_v0;
+        Vec3 h = Vec3::cross(r.direction, edge2);
+        double a = Vec3::dot(edge1, h);
+
+        if (a > -0.00001 && a < 0.00001) return false;
+
+        double f = 1.0 / a;
+        Vec3 s = r.origin - transformed_v0;
+        double u = f * Vec3::dot(s, h);
+
+        if (u < 0.0 || u > 1.0) return false;
+
+        Vec3 q = Vec3::cross(s, edge1);
+        double v = f * Vec3::dot(r.direction, q);
+
+        if (v < 0.0 || u + v > 1.0) return false;
+
+        double t = f * Vec3::dot(edge2, q);
+
+        if (t > t_min && t < t_max) {
+            rec.t = t;
+            rec.point = r.at(t);
+            Vec3 normal = Vec3::cross(edge1, edge2).normalize();
+            normal = transform.transform_vector(normal).normalize(); // Normal'i dönüştür
+            rec.set_face_normal(r, normal);
+            rec.material = material;
+            return true;
+        }
+
+        return false;
+    }
+     
+};
+
+
+class HittableList : public Hittable {
+public:
+    std::vector<std::shared_ptr<Hittable>> objects;
+
+    HittableList() {}
+    HittableList(std::shared_ptr<Hittable> object) { add(object); }
+    void reserve(size_t n) { objects.reserve(n); }
+    size_t size() const { return objects.size(); }
+    void clear() { objects.clear(); }
+    void add(std::shared_ptr<Hittable> object) { objects.push_back(object); }
+    std::vector<std::shared_ptr<Light>> lights;
+
+    void add_light(std::shared_ptr<Light> light) {
+        lights.push_back(light);
+    }
+
+    virtual bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const override {
+        HitRecord temp_rec;
+        bool hit_anything = false;
+        auto closest_so_far = t_max;
+
+        for (const auto& object : objects) {
+            if (object->hit(r, t_min, closest_so_far, temp_rec)) {
+                hit_anything = true;
+                closest_so_far = temp_rec.t;
+                rec = temp_rec;
+            }
+        }
+
+        return hit_anything;
+    }
+};
+
+class Camera {
+private:
+    struct Plane {
+        Vec3 normal;
+        double distance;
+
+        Plane() : normal(Vec3()), distance(0) {}
+        Plane(const Vec3& n, const Vec3& point) : normal(n.normalize()) {
+            distance = -Vec3::dot(normal, point);
+        }
+
+        double distanceToPoint(const Vec3& point) const {
+            return Vec3::dot(normal, point) + distance;
+        }
+    };
+    // Frustum culling için ek alanlar
+
+
+
+public:
+    Camera(Vec3 lookfrom, Vec3 lookat, Vec3 vup, double vfov, double aspect, double aperture, double focus_dist) {
+        double theta = vfov * M_PI / 180;
+        double half_height = tan(theta / 2);
+        double half_width = aspect * half_height;
+        origin = lookfrom;
+        w = (lookfrom - lookat).normalize();
+        u = Vec3::cross(vup, w).normalize();
+        v = Vec3::cross(w, u);
+        lower_left_corner = origin - half_width * focus_dist * u - half_height * focus_dist * v - focus_dist * w;
+        horizontal = 2 * half_width * focus_dist * u;
+        vertical = 2 * half_height * focus_dist * v;
+        lens_radius = aperture / 2;
+
+        // Frustum culling için ek alanlar
+        near_dist = 0.1;  // Yakın düzlem mesafesi, ihtiyaca göre ayarlayın
+        far_dist = focus_dist * 2;  // Uzak düzlem mesafesi, ihtiyaca göre ayarlayın
+        fov = vfov;
+        aspect_ratio = aspect;
+        updateFrustumPlanes();
+    }
+    bool isPointInFrustum(const Vec3& point, double size) const {
+        for (const auto& plane : frustum_planes) {
+            if (plane.distanceToPoint(point) < -size) {
+                return false;  // Point is outside the frustum
+            }
+        }
+        return true;  // Point is inside or intersects the frustum
+    }
+
+    Ray get_ray(double s, double t) const {
+        Vec3 rd = lens_radius * rd.random_in_unit_disk();
+        Vec3 offset = u * rd.x + v * rd.y;
+        return Ray(origin + offset, lower_left_corner + s * horizontal + t * vertical - origin - offset);
+    }
+
+    // Frustum culling için yeni fonksiyonlar
+    void updateFrustumPlanes() {
+        // Frustum düzlemlerini hesapla
+        Vec3 fc = origin - w * far_dist;
+        float near_height = 2 * tan(fov * 0.5f * M_PI / 180) * near_dist;
+        float far_height = 2 * tan(fov * 0.5f * M_PI / 180) * far_dist;
+        float near_width = near_height * aspect_ratio;
+        float far_width = far_height * aspect_ratio;
+
+        Vec3 ntl = origin - w * near_dist - u * (near_width * 0.5f) + v * (near_height * 0.5f);
+        Vec3 ntr = origin - w * near_dist + u * (near_width * 0.5f) + v * (near_height * 0.5f);
+        Vec3 nbl = origin - w * near_dist - u * (near_width * 0.5f) - v * (near_height * 0.5f);
+        Vec3 ftr = fc + u * (far_width * 0.5f) + v * (far_height * 0.5f);
+
+        frustum_planes[0] = Plane(Vec3::cross(ntl - ntr, ntl - ftr).normalize(), ntl);  // top
+        frustum_planes[1] = Plane(Vec3::cross(nbl - ntl, nbl - fc).normalize(), nbl);   // left
+        frustum_planes[2] = Plane(w, origin - w * near_dist);                           // near
+        frustum_planes[3] = Plane(Vec3::cross(ntr - ntl, ntr - fc).normalize(), ntr);   // right
+        frustum_planes[4] = Plane(Vec3::cross(nbl - ntr, nbl - fc).normalize(), nbl);   // bottom
+        frustum_planes[5] = Plane(-w, fc);                                              // far
+    }
+
+    bool isAABBInFrustum(const AABB& aabb) const {
+        for (const auto& plane : frustum_planes) {
+            if (plane.distanceToPoint(aabb.getPositiveVertex(plane.normal)) < 0) {
+                return false;  // AABB frustum dışında
+            }
+        }
+        return true;  // AABB frustum içinde
+    }
+
+    std::vector<AABB> performFrustumCulling(const std::vector<AABB>& objects) const {
+        std::vector<AABB> visibleObjects;
+        for (const auto& obj : objects) {
+            if (isAABBInFrustum(obj)) {
+                visibleObjects.push_back(obj);
+            }
+        }
+        return visibleObjects;
+    }
+
+
+
+    Vec3 origin;
+    Vec3 lower_left_corner;
+    Vec3 horizontal;
+    Vec3 vertical;
+    Vec3 u, v, w;
+    double lens_radius;
+
+private:
+    // Frustum culling için ek alanlar
+    double near_dist;
+    double far_dist;
+    double fov;
+    double aspect_ratio;
+    Plane frustum_planes[6];
+
+};
+
+const double min_distance = 0.1;  // Minimum mesafe
+const double max_distance = 1000.0;  // Maksimum mesafe
+
+Vec3 calculate_light_contribution(const std::shared_ptr<Light>& light, const Vec3& point, const Vec3& normal) {
+    Vec3 to_light = light->position - point;
+    double distance = to_light.length();
+
+    if (distance < min_distance) distance = min_distance;
+    if (distance > max_distance) return Vec3(0, 0, 0);
+
+    to_light = to_light.normalize();
+    double cos_theta = std::max(0.0, Vec3::dot(normal, to_light));
+
+    Vec3 intensity = light->intensity;
+
+    if (auto point_light = std::dynamic_pointer_cast<PointLight>(light)) {
+        // Nokta ışık için ters kare yasası
+        intensity = intensity / (distance * distance);
+    }
+    else if (auto directional_light = std::dynamic_pointer_cast<DirectionalLight>(light)) {
+        // Yönlü ışık için sabit şiddet
+        // Burada bir şey yapmıyoruz çünkü şiddet zaten sabit
+    }
+    else {
+        // Diğer ışık tipleri için varsayılan olarak ters kare yasası
+        intensity = intensity / (distance * distance);
+    }
+
+    // Atmosferik etki (opsiyonel)
+    double atmospheric_attenuation = exp(-distance * 0.0001);
+    intensity = intensity * atmospheric_attenuation;
+
+    return intensity * cos_theta;
+}
+
+
+Vec3 ray_color(const Ray& r, const Hittable& world, const std::vector<std::shared_ptr<Light>>& lights, const Vec3& background_color, int max_depth) {
+    Vec3 final_color(0, 0, 0);
+    Ray current_ray = r;
+    Vec3 throughput(1.0, 1.0, 1.0);
+
+    for (int depth = 0; depth < max_depth; ++depth) {
+        HitRecord rec;
+        if (!world.hit(current_ray, 0.001, infinity, rec)) {
+            final_color += throughput * background_color;
+            break;
+        }
+
+        Vec3 emitted = rec.material->emitted(rec.u, rec.v, rec.point);
+        final_color += throughput * emitted;
+
+        if (rec.material->type() == MaterialType::Volumetric) {
+            auto volumetric = std::dynamic_pointer_cast<Volumetric>(rec.material);
+            if (!volumetric) {
+                std::cerr << "Failed to cast to Volumetric material" << std::endl;
+                break;
+            }
+
+            double max_distance = 1.0; // Varsayılan maksimum mesafe
+            double step_size = 0.5; // Adım boyutu
+            double total_distance = 0.0;
+
+            while (total_distance < max_distance) {
+                Vec3 current_point = current_ray.at(rec.t + total_distance);
+                double current_density = volumetric->calculate_density(current_point, rec);
+
+                if (random_double() < current_density * step_size) {
+                    // Işın saçıldı
+                    Vec3 attenuation;
+                    Ray scattered;
+                    if (volumetric->scatter(current_ray, rec, attenuation, scattered)) {
+                        throughput *= volumetric->calculate_attenuation(current_point, rec, total_distance);
+                        current_ray = scattered;
+                        break;
+                    }
+                    else {
+                        return final_color; // Absorbe edildi
+                    }
+                }
+
+                total_distance += step_size;
+            }
+
+            if (total_distance >= max_distance) {
+                // Işın hacimden çıktı
+                throughput *= volumetric->calculate_attenuation(current_ray.at(rec.t + total_distance), rec, total_distance);
+                current_ray = Ray(current_ray.at(rec.t + total_distance), current_ray.direction);
+            }
+        }
+        else {
+            Vec3 attenuation;
+            Ray scattered;
+            if (!rec.material->scatter(current_ray, rec, attenuation, scattered)) {
+                break;
+            }
+
+            if (rec.material->type() != MaterialType::Dielectric) {
+                Vec3 direct_light(0, 0, 0);
+                for (const auto& light : lights) {
+                    int light_samples = (light->type() == LightType::Area) ? 16 : 1;
+                    for (int i = 0; i < light_samples; ++i) {
+                        Vec3 light_point = light->random_point();
+                        Vec3 to_light = light_point - rec.point;
+                        double distance = to_light.length();
+                        to_light = to_light.normalize();
+                        Ray shadow_ray(rec.point, to_light);
+                        HitRecord shadow_rec;
+                        if (!world.hit(shadow_ray, 0.001, distance, shadow_rec)) {
+                            Vec3 light_contribution = calculate_light_contribution(light, rec.point, rec.normal);
+                            direct_light += light_contribution / light_samples;
+                        }
+                    }
+                }
+                final_color += throughput * attenuation * direct_light;
+            }
+
+            throughput *= attenuation;
+            current_ray = scattered;
+        }
+
+        // Russian Roulette for path termination
+        if (depth > 3) {
+            double max_component = std::max({ throughput.x, throughput.y, throughput.z });
+            double p = std::max(0.1, std::min(0.95, max_component));
+            if (random_double() >= p) {
+                break;
+            }
+            throughput /= p;
+        }
+    }
+
+    return final_color;
+}
+
+
+
+bool SaveSurface(SDL_Surface* surface, const char* file_path) {
+    SDL_Surface* surface_to_save = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGB24, 0);
+    if (surface_to_save == NULL) {
+        SDL_Log("Couldn't convert surface: %s", SDL_GetError());
+        return false;
+    }
+
+    int result = IMG_SavePNG(surface_to_save, file_path);
+    SDL_FreeSurface(surface_to_save);
+
+    if (result != 0) {
+        SDL_Log("Failed to save image: %s", IMG_GetError());
+        return false;
+    }
+
+    return true;
+}
+
+const auto aspect_ratio = 16.0 / 9.0;
+const int image_width = 1280;
+const int image_height = static_cast<int>(image_width / aspect_ratio);
+
+// Nokta dönüştürme fonksiyonu
+Vec3 transform_point(const Matrix4x4& mat, const Vec3& point) {
+    double x = mat.m[0][0] * point.x + mat.m[0][1] * point.y + mat.m[0][2] * point.z + mat.m[0][3];
+    double y = mat.m[1][0] * point.x + mat.m[1][1] * point.y + mat.m[1][2] * point.z + mat.m[1][3];
+    double z = mat.m[2][0] * point.x + mat.m[2][1] * point.y + mat.m[2][2] * point.z + mat.m[2][3];
+    double w = mat.m[3][0] * point.x + mat.m[3][1] * point.y + mat.m[3][2] * point.z + mat.m[3][3];
+
+    // Perspektif bölme
+    if (w != 1 && w != 0) {
+        x /= w;
+        y /= w;
+        z /= w;
+    }
+
+    return Vec3(x, y, z);
+}
+
+   // Sahne oluşturma işlevi
+HittableList create_scene(std::vector<std::shared_ptr<Light>>& lights, Vec3& background_color) {
+    HittableList world;
+    
+   
+    Vec3 v0, v1, v2;
+    // Load OBJ file and add triangles to world
+    //std::vector<ObjLoader::ObjTriangle> triangles;
+
+     // Arka plan rengini ayarla
+    background_color = Vec3(0.1, 0.1, 0.1);
+    // Transform triangles and add to world
+    std::vector<ObjLoader::ObjTriangle> triangles;
+    bool obj_loaded = ObjLoader::Loader::loadObj("11.obj", triangles);
+
+    if (obj_loaded) {
+        for (const auto& objTriangle : triangles) {
+            auto triangle_material = std::make_shared<Lambertian>(Vec3(0.6, 0.6, 0.4));
+            // Apply transformation matrix
+            // ...
+            Vec3 v0(objTriangle.v1.x, objTriangle.v1.y, objTriangle.v1.z);
+            Vec3 v1(objTriangle.v2.x, objTriangle.v2.y, objTriangle.v2.z);
+            Vec3 v2(objTriangle.v3.x, objTriangle.v3.y, objTriangle.v3.z);
+
+            auto tri = std::make_shared<Triangle>(v0, v1, v2, triangle_material);
+            Matrix4x4 scale = Matrix4x4::scaling(Vec3(4, 4, 4));
+            Matrix4x4 translate = Matrix4x4::translation(Vec3(0, -0.5, -2));
+            tri->set_transform(translate * scale);
+            world.add(tri);
+        }
+        std::cout << "OBJ file loaded successfully. Number of triangles: " << triangles.size() << std::endl;
+    }
+    else {
+        std::cerr << "Failed to load OBJ file. Continuing with other objects." << std::endl;
+    }
+
+    // Add other objects to world
+    
+    // Create a Volumetric material instance
+    auto material_volume = std::make_shared<Volumetric>(
+        Vec3(0.5, 0.5, 0.5), //albedo değeri
+        0.0005, //Density (Yoğunluk) değeri
+        0.2      // emilim_olasılığı değeri  
+    );
+
+
+    // Modify absorption coefficient and density
+   
+    // ...
+    auto material_ground = std::make_shared<Lambertian>(Vec3(0.4, 0.4, 0.4));
+    auto material_center = std::make_shared<Lambertian>(Vec3(0.1, 0.2, 0.5));
+    auto material_left = std::make_shared<Dielectric>(1.5);
+    auto material_right = std::make_shared<Metal>(Vec3(0.8, 0.6, 0.2), 0.0);
+    auto material_back = std::make_shared<Metal>(Vec3(1.0, 1.0, 0.0), 0.0);
+   // auto material_volume = std::make_shared<Volumetric>(Vec3(1.0, 1.0, 1.0), 0.1);
+    auto material_box1 = std::make_shared<Lambertian>(Vec3(0.4, 0.6, 0.6));
+
+    // Add boxes and other objects to the world and their bounds to object_bounds
+    std::vector<std::pair<Vec3, double>> object_bounds;
+
+    auto add_object = [&](std::shared_ptr<Hittable> obj, const Vec3& center, double size) {
+        world.add(obj);
+        object_bounds.emplace_back(center, size);
+        };
+
+    add_object(std::make_shared<Box>(Vec3(-2.0, 0.0, -1.0), 1.0, material_volume), Vec3(-2.0, 0.5, -1.0), 1.0);
+    add_object(std::make_shared<Box>(Vec3(2.0, 0.0, -1.0), 1.0, material_box1), Vec3(2.0, 0.5, -1.0), 1.0);
+    add_object(std::make_shared<Box>(Vec3(2.0, 0.0, -5.0), 1.0, material_box1), Vec3(2.0, 0.5, -5.0), 1.0);
+    add_object(std::make_shared<Box>(Vec3(-2.0, 0.0, -5.0), 1.0, material_box1), Vec3(-2.0, 0.5, -5.0), 1.0);
+    add_object(std::make_shared<Sphere>(Vec3(0.0, 0.0, -1.0), 0.5, material_center), Vec3(0.0, 0.0, -1.0), 0.5);
+    add_object(std::make_shared<Sphere>(Vec3(0.0, 0.4, -5.0), 1, material_back), Vec3(0.0, 0.4, -5.0), 1.0);
+    add_object(std::make_shared<Sphere>(Vec3(-1.0, 0.0, -1.0), 0.5, material_left), Vec3(-1.0, 0.0, -1.0), 0.5);
+    add_object(std::make_shared<Sphere>(Vec3(1.0, 0.0, -1.0), 0.5, material_right), Vec3(1.0, 0.0, -1.0), 0.5);
+
+    // Işık ekle
+    lights.push_back(std::make_shared<PointLight>(Vec3(0, 5, -5), Vec3(20, 20, 20)));
+    //lights.push_back(std::make_shared<PointLight>(Vec3(-4, 5, -2), Vec3(20, 20, 20)));
+    //lights.push_back(std::make_shared<DirectionalLight>(Vec3(5, 20, 0), Vec3(2, 2, 2)));
+    //lights.push_back(std::make_shared<AreaLight>(Vec3(0, 5, -1), Vec3(0, -1, 2), Vec3(0, -1, 2), 5, 5, Vec3(20, 20, 20)));
+
+    std::cout << "Total objects in the scene: " << world.size() << std::endl;
+
+    return world;
+
+
+}
+
+void render_chunk(int start_row, int end_row, SDL_Surface* surface, const HittableList& world, const std::vector<std::shared_ptr<Light>>& lights, const Vec3& background_color) {
+    
+    
+    // Set up rendering parameters
+    const int samples_per_pixel = 50;
+    const int max_depth = 50;
+    //Vec3 background_color(0.1, 0.1, 0.12);
+    // Define camera and world
+    Vec3 lookfrom(0, 2, 5);
+    Vec3 lookat(0, 0, -1);
+    Vec3 vup(0, 1, 0);
+    double vfov = 30.0;
+    double aperture = 0.2;
+    double dist_to_focus = (lookfrom - lookat).length();
+    Camera cam(lookfrom, lookat, vup, vfov, aspect_ratio, aperture, dist_to_focus);
+     
+
+        // Iterate over pixels in chunk
+        for (int j = end_row; j >= start_row; --j) {
+            for (int i = 0; i < image_width; ++i) {
+                Vec3 color(0, 0, 0);
+
+                // Accumulate colors from multiple samples
+                for (int s = 0; s < samples_per_pixel; ++s) {
+                    // Generate ray
+                    auto u = (i + random_double()) / (image_width - 1);
+                    auto v = (j + random_double()) / (image_height - 1);
+                    Ray r = cam.get_ray(u, v);
+
+                    // Calculate ray color
+                    color += ray_color(r, world, lights, background_color, max_depth);
+                }
+
+                // Average color and gamma correction
+                color /= samples_per_pixel;
+                color = Vec3(sqrt(color.x), sqrt(color.y), sqrt(color.z));
+
+                // Convert color to SDL pixel format
+                int ir = static_cast<int>(256 * clamp(color.x, 0.0, 0.999));
+                int ig = static_cast<int>(256 * clamp(color.y, 0.0, 0.999));
+                int ib = static_cast<int>(256 * clamp(color.z, 0.0, 0.999));
+
+                // Set pixel color in SDL surface
+                std::lock_guard<std::mutex> lock(mtx);
+                Uint32* pixel = static_cast<Uint32*>(surface->pixels) + (image_height - 1 - j) * surface->pitch / 4 + i;
+                *pixel = SDL_MapRGB(surface->format, ir, ig, ib);
+            }
+        }
+    }
+
+
+void update_display(SDL_Window* window, SDL_Surface* surface) {
+    while (!rendering_complete) {
+        SDL_UpdateWindowSurface(window);
+
+        float progress = static_cast<float>(completed_pixels) / (image_width * image_height) * 100.0f;
+        std::cout << "\rRendering progress: " << std::fixed << std::setprecision(2) << progress << "%" << std::flush;
+
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                rendering_complete = true;
+                return;
+            }
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 100ms aralıklarla güncelle
+    }
+}
+
+
+std::atomic<int> next_row(0);
+void render_worker(int image_height, SDL_Surface* surface, const HittableList& world, const std::vector<std::shared_ptr<Light>>& lights, const Vec3& background_color) {
+  
+    while (true) {
+        int start_row = next_row.fetch_add(16); // 16 satırlık chunk'lar
+        if (start_row >= image_height) {
+            break;
+        }
+        int end_row = std::min(start_row + 15, image_height - 1);
+        render_chunk(start_row, end_row, surface, world, lights, background_color);
+    }
+}
+
+void render_image(SDL_Surface* surface, SDL_Window* window) {
+    unsigned int num_threads = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads;
+
+    std::cout << "Starting render with " << num_threads << " threads" << std::endl;
+
+
+    auto start_time = std::chrono::steady_clock::now();
+    // Işık nesnelerini tutacak vektör
+    std::vector<std::shared_ptr<Light>> lights;
+
+    // Arka plan rengi
+    Vec3 background_color;
+    // Sahneyi bir kez oluştur
+    HittableList world = create_scene(lights, background_color);
+    // ... scene oluşturma işlemleri ...
+    auto create_scene_end_time = std::chrono::steady_clock::now();
+
+    // Ekran güncelleme thread'ini başlat
+    std::thread display_thread(update_display, window, surface);
+
+    for (unsigned int t = 0; t < num_threads; ++t) {
+        threads.emplace_back(render_worker, image_height, surface, std::ref(world), std::ref(lights), background_color);
+    }
+
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    rendering_complete = true;
+    display_thread.join();
+
+    SDL_UpdateWindowSurface(window);
+
+    std::cout << "\nRender completed." << std::endl;
+
+    // ... render işlemi ...
+    auto render_end_time = std::chrono::steady_clock::now();
+
+    // Render sürelerini hesapla
+    auto create_scene_duration = std::chrono::duration<double, std::milli>(create_scene_end_time - start_time);
+    auto render_duration = std::chrono::duration<double, std::milli>(render_end_time - create_scene_end_time);
+    auto total_duration = std::chrono::duration<double, std::milli>(render_end_time - start_time);
+
+
+    // Konsola yazdır
+    std::cout << "\nRender completed.\n";
+    std::cout << "Create Scene Duration: " << create_scene_duration.count() / 1000 << " seconds" << std::endl;
+    std::cout << "Render Duration: " << render_duration.count() / 1000 << " seconds" << std::endl;
+    std::cout << "Total Duration: " << total_duration.count() / 1000 << " seconds" << std::endl;
+}
+
+
+int main(int argc, char* argv[]) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+    int imgFlags = IMG_INIT_PNG;
+    if (!(IMG_Init(imgFlags) & imgFlags)) {
+        SDL_Log("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Window* window = SDL_CreateWindow("Ray Tracing", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, image_width, image_height, SDL_WINDOW_SHOWN);
+    if (window == nullptr) {
+        std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Surface* surface = SDL_GetWindowSurface(window);
+    if (surface == nullptr) {
+        std::cerr << "SDL_GetWindowSurface Error: " << SDL_GetError() << std::endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    // Render işlemi burada gerçekleşiyor
+    render_image(surface, window);
+    SDL_UpdateWindowSurface(window);
+    if (SaveSurface(surface, "output.png")) {
+        std::cout << "Image saved successfully!" << std::endl;
+    }
+    else {
+        std::cerr << "Failed to save image." << std::endl;
+    }
+    // Render işlemi bittikten sonra pencereyi açık tutan döngü
+    bool quit = false;
+    SDL_Event e;
+    while (!quit) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                quit = true; // Kapatma isteği geldiğinde döngüden çık
+            }
+        }
+        // Küçük bir gecikme ekleyerek işlemciyi fazla meşgul etmemek için bekleyin
+        SDL_Delay(10);
+    }
+
+    SDL_FreeSurface(surface);
+    SDL_DestroyWindow(window);
+    IMG_Quit();
+    SDL_Quit();
+
+    return 0;
+}
