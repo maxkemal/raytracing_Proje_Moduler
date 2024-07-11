@@ -5,7 +5,7 @@ This project includes a ray tracing engine implemented in C++ using SIMD (Single
 ## Features
 
 - **Ray Tracing:** Realistic shadows and reflections are achieved using ray tracing for each pixel.
-- **Materials and Lights:** Supports various materials such as Lambertian, Metal, Dielectric, and different light sources including directional lights, point lights, etc.
+- **Materials and Lights:** Supports various materials such as Lambertian, Metal, Dielectric, volumeyric, sss mayerial and different light sources including directional lights, point lights, area light etc.
 - **OBJ Loader:** Includes a loader function to import models in OBJ format into the scene.
 - **SIMD Optimization:** Vector operations are optimized using SIMD (Vec3SIMD) to improve performance.
 - **BVH:** Uses an AABB Hierarchical Bounding Volume Hierarchy (BVH) for fast ray-scene intersections.
