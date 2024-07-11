@@ -1,7 +1,8 @@
 #include "Vec3.h"
-#include <cstdlib> // std::rand
-#include <limits>  // std::numeric_limits
-
+#include "Vec3SIMD.h"
+#include <cstdlib> 
+#include <limits>  
+#include <random>
 Vec3::Vec3() : x(0), y(0), z(0) {}
 
 Vec3::Vec3(double x, double y, double z) : x(x), y(y), z(z) {}
@@ -11,13 +12,29 @@ double Vec3::operator[](int index) const {
     else if (index == 1) return y;
     else return z;
 }
-
+Vec3::Vec3(float value) : x(value), y(value), z(value) {}
 double& Vec3::operator[](int index) {
     if (index == 0) return x;
     else if (index == 1) return y;
     else return z;
 }
+Vec3 Vec3::operator*(const Vec3& other) const {
+    // Implementation of the operator
+    return Vec3(x * other.x, y * other.y, z * other.z);
+}
+Vec3& Vec3::operator*=(double t) {
+    x *= t;
+    y *= t;
+    z *= t;
+    return *this;
+}
 
+Vec3& Vec3::operator*=(const Vec3& other) {
+    x *= other.x;
+    y *= other.y;
+    z *= other.z;
+    return *this;
+}
 Vec3 Vec3::operator-() const {
     return Vec3(-x, -y, -z);
 }
@@ -60,7 +77,19 @@ Vec3 Vec3::normalize() const {
     double len = length();
     return *this / len;
 }
+// Mersenne Twister rastgele sayý üreteci
+std::mt19937 rng;
+std::uniform_real_distribution<double> dist(0.0, 1.0);
 
+// Rastgele sayý üreteciyi tohumla
+void seed_random() {
+    std::random_device rd;
+    rng.seed(rd());
+}
+// [0, 1) aralýðýnda rastgele bir sayý üret
+double random_double() {
+    return dist(rng);
+}
 Vec3 Vec3::random(double min, double max) {
     return Vec3(random_double(min, max), random_double(min, max), random_double(min, max));
 }
@@ -85,16 +114,13 @@ Vec3 Vec3::reflect(const Vec3& v, const Vec3& n) {
     return v - 2 * Vec3::dot(v, n) * n;
 }
 
-Vec3 Vec3::refract(const Vec3& uv, const Vec3& n, double etai_over_etat) {
+ Vec3 Vec3::refract(const Vec3& uv, const Vec3& n, double etai_over_etat) {
     auto cos_theta = fmin(Vec3::dot(-uv, n), 1.0);
-    Vec3 r_out_perp = etai_over_etat * (uv + cos_theta * n);
+    Vec3 r_out_perp =  etai_over_etat * (uv + cos_theta*n);
     Vec3 r_out_parallel = -sqrt(fabs(1.0 - r_out_perp.length_squared())) * n;
     return r_out_perp + r_out_parallel;
 }
-double random_double() {
-    // Return a random real in [0,1)
-    return rand() / (RAND_MAX + 1.0);
-}
+
 
 double random_double(double min, double max) {
     // Return a random real in [min,max)
@@ -121,6 +147,10 @@ Vec3 Vec3::operator/(double t) const {
     return *this * (1.0 / t);
 }
 
+
 Vec3 operator*(double t, const Vec3& v) {
     return Vec3(v.x * t, v.y * t, v.z * t);
+}
+Vec3 unit_vector(const Vec3& v) {
+    return v / v.length();
 }

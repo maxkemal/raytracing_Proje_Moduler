@@ -10,7 +10,7 @@ public:
         : position(pos), u(u_vec), v(v_vec), width(w), height(h), intensity(intens) {
         direction = u.cross(v).normalize();
     }
-
+    
     Vec3 random_point() const override {
         double rand_u = static_cast<double>(rand()) / RAND_MAX;
         double rand_v = static_cast<double>(rand()) / RAND_MAX;
@@ -23,7 +23,14 @@ public:
     double getWidth() const { return width; }
     double getHeight() const { return height; }
     Vec3 getIntensity() const { return intensity; }
-    Vec3 getDirection() const { return direction; }
+    Vec3 getDirection(const Vec3& point) const {
+        return (position - point).normalize();
+    }
+
+    Vec3 getIntensity(const Vec3& point) const {
+        // Assuming intensity is constant across the area light.
+        return intensity;
+    }
 
     LightType type() const override { return LightType::Area; }
 

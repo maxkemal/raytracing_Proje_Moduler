@@ -1,32 +1,41 @@
-#ifndef MESH_H
-#define MESH_H
+#pragma once
 
 #include <vector>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include "Hittable.h"
-#include "Vec2.h"
+#include "ObjLoader.h"
+#include "Material.h"
 #include "Vec3.h"
-#include "Triangle.h"
+#include "Vec2.h"
 
-class Mesh : public Hittable {
+class EnhancedMesh : public Hittable {
 public:
-    std::vector<Vec3> vertices;
-    std::vector<Vec2> texCoords;
-    std::vector<Vec3> normals;
-    std::string materialName; // Materyal ismi, isteðe baðlý olarak kullanýlabilir
+    EnhancedMesh() = default;
+    explicit EnhancedMesh(const ObjLoader::ObjMesh& objMesh, const std::unordered_map<std::string, std::unique_ptr<ObjLoader::ObjMaterial>>& materials);
 
-    // Yüz (face) yapýsý
+    bool hit(const Ray& r, double t_min, double t_max, HitRecord& rec) const override;
+    bool bounding_box(double time0, double time1, AABB& output_box) const override;
+
+    static std::vector<std::shared_ptr<EnhancedMesh>> createFromObjModel(const ObjLoader::ObjModel& model);
+
+private:
     struct Face {
         std::vector<int> vertexIndices;
-        std::vector<int> textureIndices;
         std::vector<int> normalIndices;
+        std::vector<int> texCoordIndices;
     };
 
-    std::vector<Face> faces; // Yüzlerin listesi
+    std::vector<Vec3> vertices;
+    std::vector<Vec3> normals;
+    std::vector<Vec2> texCoords;
+    std::vector<Face> faces;
+    std::shared_ptr<Material> material;
 
-    // Üçgenleri oluþturma ve dönüþtürme metodu
-    std::vector<std::shared_ptr<Triangle>> generateTriangles(std::shared_ptr<Material> material) const;
+    void triangulate();
+    bool rayTriangleIntersect(const Ray& r, const Vec3& v0, const Vec3& v1, const Vec3& v2, const Vec3& n0, const Vec3& n1, const Vec3& n2, const Vec2& t0, const Vec2& t1, const Vec2& t2, double t_min, double t_max, HitRecord& rec) const;
+   
+    
+    static std::shared_ptr<Material> createMaterialFromObjMaterial(const ObjLoader::ObjMaterial* objMaterial);
 };
-
-#endif // MESH_H

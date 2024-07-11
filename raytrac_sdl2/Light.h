@@ -22,7 +22,8 @@ public:
 
     // Sanal yýkýcý eklendi
     virtual ~Light() = default;
-
+    virtual Vec3 getDirection(const Vec3& point) const = 0;
+    virtual Vec3 getIntensity(const Vec3& point) const = 0;
     virtual Vec3 random_point() const = 0;
     virtual LightType type() const = 0;
 };

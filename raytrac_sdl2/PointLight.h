@@ -7,7 +7,14 @@
 class PointLight : public Light {
 public:
     PointLight(const Vec3& pos, const Vec3& intens, float rad);
+    Vec3 getDirection(const Vec3& point) const override {
+        return (position - point).normalize();
+    }
 
+    Vec3 getIntensity(const Vec3& point) const override {
+        float distance = (position - point).length();
+        return intensity / (distance * distance);
+    }
     Vec3 random_point() const override;
     LightType type() const override;
     Vec3 getPosition() const { return position; }

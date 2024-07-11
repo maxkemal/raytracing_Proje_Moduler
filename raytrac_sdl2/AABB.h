@@ -8,10 +8,14 @@
 class AABB {
 public:
     Vec3 min, max;
-
+   
     AABB() {}
     AABB(const Vec3SIMD& a, const Vec3SIMD& b) : min(a), max(b) {}
-
+    bool overlaps(const AABB& other) const {
+        return (min.x <= other.max.x && max.x >= other.min.x) &&
+            (min.y <= other.max.y && max.y >= other.min.y) &&
+            (min.z <= other.max.z && max.z >= other.min.z);
+    }
     bool hit(const Ray& r, double t_min, double t_max) const {
         for (int a = 0; a < 3; a++) {
             auto invD = 1.0f / r.direction[a];
@@ -34,7 +38,10 @@ public:
             normal.z >= 0 ? max.z : min.z
         );
     }
+private:
+   
 };
+
 
 AABB surrounding_box(const AABB& box0, const AABB& box1);
 

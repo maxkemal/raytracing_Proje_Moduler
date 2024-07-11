@@ -2,9 +2,9 @@
 #include <cmath> // cos ve sin fonksiyonlarý için
 
 // Varsayýlan yapýcý
-Matrix4x4::Matrix4x4() {
-    identity();
-}
+
+
+
 
 // Birim matris oluþturma
 void Matrix4x4::identity() {
@@ -14,7 +14,37 @@ void Matrix4x4::identity() {
         }
     }
 }
+Matrix4x4::Matrix4x4(Vec3 tangent, Vec3 bitangent, Vec3 normal) {
+    // Ýlk üç satýr ve sütunu TBN matrisine göre ayarla
+    m[0][0] = tangent.x;
+    m[0][1] = tangent.y;
+    m[0][2] = tangent.z;
+    m[0][3] = 0.0f;
 
+    m[1][0] = bitangent.x;
+    m[1][1] = bitangent.y;
+    m[1][2] = bitangent.z;
+    m[1][3] = 0.0f;
+
+    m[2][0] = normal.x;
+    m[2][1] = normal.y;
+    m[2][2] = normal.z;
+    m[2][3] = 0.0f;
+
+    // Son satýrý ve sütunu birim matrise göre ayarla
+    m[3][0] = 0.0f;
+    m[3][1] = 0.0f;
+    m[3][2] = 0.0f;
+    m[3][3] = 1.0f;
+}
+// Matrix4x4 ve Vec3 çarpma operatörü tanýmý
+Vec3 operator*(const Matrix4x4& mat, const Vec3& vec) {
+    Vec3 result;
+    result.x = mat.m[0][0] * vec.x + mat.m[0][1] * vec.y + mat.m[0][2] * vec.z + mat.m[0][3];
+    result.y = mat.m[1][0] * vec.x + mat.m[1][1] * vec.y + mat.m[1][2] * vec.z + mat.m[1][3];
+    result.z = mat.m[2][0] * vec.x + mat.m[2][1] * vec.y + mat.m[2][2] * vec.z + mat.m[2][3];
+    return result;
+}
 // Matris çarpýmý operatörü
 Matrix4x4 Matrix4x4::operator*(const Matrix4x4& other) const {
     Matrix4x4 result;
@@ -66,4 +96,5 @@ Matrix4x4 Matrix4x4::scaling(const Vec3& s) {
 // X ekseni etrafýnda rotasyon matrisi oluþturma
 Matrix4x4 Matrix4x4::rotation_x(float angle) {
     Matrix4x4 mat;
+    return mat;
 }

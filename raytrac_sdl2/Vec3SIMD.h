@@ -13,7 +13,11 @@ public:
     Vec3SIMD(float x, float y, float z);
     Vec3SIMD(__m128 v);
     Vec3SIMD(const Vec3& v);
-
+    // Vec3SIMD yazdýrma fonksiyonu
+    friend std::ostream& operator<<(std::ostream& os, const Vec3SIMD& vec) {
+        os << "(" << vec.x() << ", " << vec.y() << ", " << vec.z() << ")";
+        return os;
+    }
     operator Vec3() const;
 
     float x() const;

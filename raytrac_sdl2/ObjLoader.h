@@ -24,12 +24,16 @@ namespace ObjLoader {
 
     struct ObjTriangle {
         ObjVec3 v1, v2, v3;
+        ObjVec2 t1, t2, t3;  // Added texture coordinates
+        ObjVec3 n1, n2, n3;  // Added normals
+        std::string materialName;  // Added material name
     };
 
     struct ObjFace {
         std::vector<int> vertexIndices;
         std::vector<int> textureIndices;
         std::vector<int> normalIndices;
+        int smoothGroup;
     };
 
     struct ObjMaterial {
@@ -58,8 +62,8 @@ namespace ObjLoader {
 
     class OBJLOADER_API Loader {
     public:
-        static bool loadObj(const std::string& filename, std::vector<ObjTriangle>& triangles);
-        static bool loadEnhancedObj(const std::string& filename, ObjModel& model);
+        static bool loadObj(const std::string& filename, ObjModel& model);
+        
 
     private:
         static bool parseFace(const std::string& line, ObjFace& face);

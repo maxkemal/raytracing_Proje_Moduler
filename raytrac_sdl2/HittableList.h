@@ -2,14 +2,14 @@
 #define HITTABLELIST_H
 
 #include "Hittable.h"
-#include "BVHNode.h"
+#include "ParallelBVHNode.h"
 #include <memory>
 #include <vector>
 
 class HittableList : public Hittable {
 public:
     std::vector<std::shared_ptr<Hittable>> objects;
-    std::shared_ptr<BVHNode> bvh_root;
+    std::shared_ptr<ParallelBVHNode> bvh_root;
 
     HittableList();
     HittableList(std::shared_ptr<Hittable> object);

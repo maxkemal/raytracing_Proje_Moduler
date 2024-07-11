@@ -4,11 +4,11 @@ std::mutex mtx;
 std::atomic<int> completed_pixels(0);
 std::atomic<bool> rendering_complete(false);
 const double min_distance = 0.1;  // Minimum mesafe
-const double max_distance = 1000.0;  // Maksimum mesafe
+const double max_distance = 100.0;  // Maksimum mesafe
 const double aspect_ratio = 16.0 / 9.0; // Sabit olarak double türünde tanýmlýyoruz
 const int image_width = 1280;
 const int image_height = static_cast<int>(image_width / aspect_ratio);
-const float EPSILON = 1e-8f;
-const int MAX_DEPTH = 20;
+const float EPSILON = 1e-7f;
+const int MAX_DEPTH = 30;
 std::atomic<int> next_row(0);
 const double infinity = std::numeric_limits<double>::max();

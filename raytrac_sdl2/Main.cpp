@@ -1,11 +1,12 @@
 #include <SDL_main.h> 
 #include <fstream>
+#include <locale>
 #include <SDL_image.h>
 #include "Renderer.h"
 
 
-std::shared_ptr<BVHNode> build_bvh(const std::vector<std::shared_ptr<Hittable>>& objects, double time0, double time1) {
-    return std::make_shared<BVHNode>(objects, 0, objects.size(), time0, time1);
+std::shared_ptr<ParallelBVHNode> build_bvh(const std::vector<std::shared_ptr<Hittable>>& objects, double time0, double time1) {
+    return std::make_shared<ParallelBVHNode>(objects, 0, objects.size(), time0, time1);
 }
 
 inline float abs(const Vec3& v) {
@@ -50,6 +51,9 @@ Vec3 transform_point(const Matrix4x4& mat, const Vec3& point) {
 
 
 int main(int argc, char* argv[]) {
+
+    setlocale(LC_ALL, "Turkish");
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
         return 1;
@@ -75,12 +79,26 @@ int main(int argc, char* argv[]) {
         SDL_Quit();
         return 1;
     }
-
+   
     // Render iþlemi burada gerçekleþiyor
-    Renderer renderer(1280, 720,50,50);
-    renderer.render_image(surface, window);
+    //int max_samples = 50;
+    //int step = 5;
+
+    Renderer renderer(image_width, image_height, 30, 30);
+    renderer.render_image(surface, window, 100,5);
+    /*for (int samples = 5; samples <= max_samples; samples += step) {
+       
+      
+        // SDL yüzeyini güncelle ve ekranda göster
+        SDL_UpdateWindowSurface(window);
+
+        // Kýsa bir bekleme süresi ekleyebilirsiniz (isteðe baðlý)
+        SDL_Delay(100);
+    }*/
+
+   
     //Renderer::render_image(surface, window);
-    SDL_UpdateWindowSurface(window);
+    //SDL_UpdateWindowSurface(window);
     if (SaveSurface(surface, "output.png")) {
         std::cout << "Image saved successfully!" << std::endl;
     }
@@ -107,6 +125,7 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
 
 
 

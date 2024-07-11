@@ -6,9 +6,15 @@
 class Matrix4x4 {
 public:
     float m[4][4];
-
-    Matrix4x4(); // Varsayılan yapıcı
-
+    Matrix4x4() {
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j)
+                m[i][j] = (i == j) ? 1.0f : 0.0f; // Identity matrix
+    }
+    Matrix4x4(Vec3 tangent, Vec3 bitangent, Vec3 normal);
+   // Matrix4x4(); // Varsayılan yapıcı
+    // Vec3 ile Matrix4x4 çarpma operatörünü arkadaş fonksiyon olarak tanımlayın
+    friend Vec3 operator*(const Matrix4x4& mat, const Vec3& vec);
     void identity(); // Birim matris oluşturma
 
     // Matris çarpımı operatörü
