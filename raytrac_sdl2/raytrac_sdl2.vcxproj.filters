@@ -48,9 +48,6 @@
     <ClCompile Include="Sphere.cpp">
       <Filter>Kaynak Dosyalar\Source_file</Filter>
     </ClCompile>
-    <ClCompile Include="BVHNode.cpp">
-      <Filter>Kaynak Dosyalar\Source_file</Filter>
-    </ClCompile>
     <ClCompile Include="Matrix4x4.cpp">
       <Filter>Kaynak Dosyalar\Source_file</Filter>
     </ClCompile>
@@ -102,6 +99,18 @@
     <ClCompile Include="Renderer.cpp">
       <Filter>Kaynak Dosyalar\Source_file</Filter>
     </ClCompile>
+    <ClCompile Include="ObjLoaderAdapter.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="AtmosphericEffects.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
+    <ClCompile Include="ParallelBVHNode.cpp">
+      <Filter>Kaynak Dosyalar\Source_file</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vec3.h">
@@ -132,9 +141,6 @@
       <Filter>Kaynak Dosyalar\header_file</Filter>
     </ClInclude>
     <ClInclude Include="Sphere.h">
-      <Filter>Kaynak Dosyalar\header_file</Filter>
-    </ClInclude>
-    <ClInclude Include="BVHNode.h">
       <Filter>Kaynak Dosyalar\header_file</Filter>
     </ClInclude>
     <ClInclude Include="Matrix4x4.h">
@@ -189,6 +195,21 @@
       <Filter>Kaynak Dosyalar\header_file</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjLoader.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjLoaderAdapter.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="AtmosphericEffects.h">
+      <Filter>Kaynak Dosyalar\header_file</Filter>
+    </ClInclude>
+    <ClInclude Include="ParallelBVHNode.h">
       <Filter>Kaynak Dosyalar\header_file</Filter>
     </ClInclude>
   </ItemGroup>

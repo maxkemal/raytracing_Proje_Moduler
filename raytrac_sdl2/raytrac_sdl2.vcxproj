@@ -32,7 +32,7 @@
     <ProjectGuid>{5bac7720-07df-4c9c-b8ac-aaf8fe410cd8}</ProjectGuid>
     <RootNamespace>raytracsdl2</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>raytracing_Proje_Moduler</ProjectName>
+    <ProjectName>raytracing_render_code</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -215,8 +215,8 @@
   <ItemGroup>
     <ClCompile Include="AABB.cpp" />
     <ClCompile Include="AreaLight.cpp" />
+    <ClCompile Include="AtmosphericEffects.cpp" />
     <ClCompile Include="Box.cpp" />
-    <ClCompile Include="BVHNode.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Dielectric.cpp" />
     <ClCompile Include="DiffuseLight.cpp" />
@@ -231,9 +231,12 @@
     <ClCompile Include="Matrix4x4.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Metal.cpp" />
+    <ClCompile Include="ObjLoaderAdapter.cpp" />
+    <ClCompile Include="ParallelBVHNode.cpp" />
     <ClCompile Include="PointLight.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Sphere.cpp" />
+    <ClCompile Include="Texture.cpp" />
     <ClCompile Include="ThreadLocalRNG.cpp" />
     <ClCompile Include="Triangle.cpp" />
     <ClCompile Include="Vec2.cpp" />
@@ -244,8 +247,8 @@
   <ItemGroup>
     <ClInclude Include="AABB.h" />
     <ClInclude Include="AreaLight.h" />
+    <ClInclude Include="AtmosphericEffects.h" />
     <ClInclude Include="Box.h" />
-    <ClInclude Include="BVHNode.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Dielectric.h" />
     <ClInclude Include="DiffuseLight.h" />
@@ -260,11 +263,15 @@
     <ClInclude Include="Matrix4x4.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Metal.h" />
+    <ClInclude Include="ObjLoader.h" />
+    <ClInclude Include="ObjLoaderAdapter.h" />
+    <ClInclude Include="ParallelBVHNode.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="PointLight.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Sphere.h" />
+    <ClInclude Include="Texture.h" />
     <ClInclude Include="ThreadLocalRNG.h" />
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="Vec2.h" />
